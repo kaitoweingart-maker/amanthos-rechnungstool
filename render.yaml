@@ -5,7 +5,14 @@ services:
     repo: https://github.com/kaitoweingart-maker/amanthos-rechnungstool
     branch: main
     buildCommand: npm install --legacy-peer-deps && npm run build
-    staticPublishPath: ./dist
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     headers:
       - path: /*
         name: Cache-Control
