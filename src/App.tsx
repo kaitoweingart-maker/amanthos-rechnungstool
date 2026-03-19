@@ -204,9 +204,13 @@ function InvoiceTool() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                    {brand?.label?.charAt(0) ?? 'A'}
-                  </span>
+                  {brand?.logo ? (
+                    <img src={brand.logo} alt={brand.label} className="h-10 w-auto max-w-[120px] object-contain" />
+                  ) : (
+                    <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                      {brand?.label?.charAt(0) ?? 'A'}
+                    </span>
+                  )}
                   <div>
                     <p className="font-semibold">{brand?.label}</p>
                     <p className="text-xs text-muted-foreground">{company?.name}</p>
@@ -316,8 +320,11 @@ function InvoiceTool() {
             {/* Right: Summary (sticky) */}
             <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
               <Card className="shadow-md border-primary/10 overflow-hidden">
-                <div className="bg-primary/5 px-5 py-3 border-b border-primary/10">
+                <div className="bg-primary/5 px-5 py-3 border-b border-primary/10 flex items-center justify-between">
                   <h3 className="font-semibold text-base">Zusammenfassung</h3>
+                  {brand?.logo && (
+                    <img src={brand.logo} alt={brand.label} className="h-8 w-auto max-w-[100px] object-contain" />
+                  )}
                 </div>
                 <CardContent className="p-5 space-y-3">
                   <div className="space-y-2 text-sm">

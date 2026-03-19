@@ -17,4 +17,5 @@ export interface Brand {
   shortCode: string
   companyId: string
   iban: string
+  logo?: string
 }

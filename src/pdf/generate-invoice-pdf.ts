@@ -13,6 +13,20 @@ import { buildQrBillData } from './qr-bill-data'
 import { MARGIN_LEFT, FONT_SIZE_NORMAL } from './pdf-layout'
 
 /**
+ * Fetch a logo image and return it as a Buffer for PDFKit.
+ */
+async function fetchLogoBuffer(logoPath: string): Promise<Buffer | null> {
+  try {
+    const response = await fetch(logoPath)
+    if (!response.ok) return null
+    const arrayBuffer = await response.arrayBuffer()
+    return Buffer.from(arrayBuffer)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Generate the PDF and return a blob URL for preview/download.
  */
 export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
@@ -21,6 +35,9 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   if (!brand || !company) throw new Error('Brand/Company not found')
 
   const { totalNet, totalVat, totalGross, vatGroups } = calculateTotals(data.positions)
+
+  // Pre-fetch logo
+  const logoBuffer = brand.logo ? await fetchLogoBuffer(brand.logo) : null
 
   const doc = new PDFDocument({
     size: 'A4',
@@ -36,7 +53,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   const stream = doc.pipe(blobStream())
 
   // Render sections sequentially, tracking Y position
-  let y = renderHeader(doc, company, brand)
+  let y = renderHeader(doc, company, brand, logoBuffer)
   y = renderSenderLine(doc, company, y)
   y = renderDebtor(doc, data.debtor, y)
   y = renderMeta(doc, data.invoiceNumber, data.invoiceDate, data.paymentTermDays, y)

@@ -4,7 +4,7 @@ export const companies: Company[] = [
   {
     id: 'amanthos-hotel',
     name: 'Amanthos Hotel AG',
-    uid: 'CHE-188.410.975',
+    uid: 'CHE-188.410.975 MWST',
     address: {
       street: 'Frueemattli 1',
       zip: '6404',
@@ -16,7 +16,7 @@ export const companies: Company[] = [
   {
     id: 'amanthos-living',
     name: 'Amanthos Living AG',
-    uid: 'CHE-492.782.588',
+    uid: 'CHE-492.782.588 MWST',
     address: {
       street: 'Frueemattli 1',
       zip: '6404',
@@ -28,7 +28,7 @@ export const companies: Company[] = [
   {
     id: 'amanthos-ag',
     name: 'Amanthos AG',
-    uid: 'CHE-163.870.674',
+    uid: 'CHE-163.870.674 MWST',
     address: {
       street: 'Frueemattli 1',
       zip: '6404',
@@ -46,6 +46,7 @@ export const brands: Brand[] = [
     shortCode: 'PBR',
     companyId: 'amanthos-hotel',
     iban: 'CH980024824819893101V',
+    logo: '/logos/prize-by-radisson.png',
   },
   {
     id: 'chs',
@@ -53,6 +54,7 @@ export const brands: Brand[] = [
     shortCode: 'CHS',
     companyId: 'amanthos-hotel',
     iban: 'CH390024824819893102N',
+    logo: '/logos/chalet-swiss.png',
   },
   {
     id: 'hmu',
@@ -60,27 +62,31 @@ export const brands: Brand[] = [
     shortCode: 'HMU',
     companyId: 'amanthos-hotel',
     iban: 'CH390024824819893102N',
+    logo: '/logos/hotel-mulin.png',
   },
   {
     id: 'alz',
-    label: 'Living Zuerich',
+    label: 'Amanthos Living Zuerich Airport',
     shortCode: 'ALZ',
     companyId: 'amanthos-living',
     iban: 'CH350024824819980202G',
+    logo: '/logos/amanthos-living.png',
   },
   {
     id: 'als',
-    label: 'Living Solothurn',
+    label: 'Amanthos Living Solothurn',
     shortCode: 'ALS',
     companyId: 'amanthos-living',
     iban: 'CH350024824819980202G',
+    logo: '/logos/amanthos-living.png',
   },
   {
     id: 'aln',
-    label: 'Living Nyon',
+    label: 'Amanthos Living Nyon',
     shortCode: 'ALN',
     companyId: 'amanthos-living',
     iban: 'CH350024824819980202G',
+    logo: '/logos/amanthos-living.png',
   },
   {
     id: 'ama',
