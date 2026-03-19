@@ -1,0 +1,12 @@
+services:
+  - type: web
+    runtime: static
+    name: amanthos-rechnungstool
+    repo: https://github.com/kaitoweingart-maker/amanthos-rechnungstool
+    branch: main
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    staticPublishPath: ./dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
