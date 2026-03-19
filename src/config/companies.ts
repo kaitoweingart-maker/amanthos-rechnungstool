@@ -94,6 +94,7 @@ export const brands: Brand[] = [
     shortCode: 'AMA',
     companyId: 'amanthos-ag',
     iban: 'CH910024824819993701R',
+    logo: '/logos/amanthos-ag.jpg',
   },
 ]
 
