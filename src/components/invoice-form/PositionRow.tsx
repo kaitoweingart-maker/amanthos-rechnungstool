@@ -25,6 +25,8 @@ export function PositionRow({ position, onChange, onRemove, canRemove }: Positio
   }
 
   const netAmount = positionNetAmount(position)
+  const descEmpty = !position.description.trim()
+  const priceEmpty = !position.unitPrice
 
   return (
     <tr className="border-b border-muted/50 last:border-0">
@@ -33,7 +35,7 @@ export function PositionRow({ position, onChange, onRemove, canRemove }: Positio
           value={position.description}
           onChange={(e) => update('description', e.target.value)}
           placeholder="z.B. Uebernachtung DZ"
-          className="text-sm h-9"
+          className={`text-sm h-9 ${descEmpty ? 'border-primary/40 bg-primary/5' : ''}`}
         />
       </td>
       <td className="p-1.5">
@@ -54,7 +56,7 @@ export function PositionRow({ position, onChange, onRemove, canRemove }: Positio
           value={position.unitPrice || ''}
           onChange={(e) => update('unitPrice', parseFloat(e.target.value) || 0)}
           placeholder="0.00"
-          className="w-28 text-sm text-right h-9"
+          className={`w-28 text-sm text-right h-9 ${priceEmpty ? 'border-primary/40 bg-primary/5' : ''}`}
         />
       </td>
       <td className="p-1.5">

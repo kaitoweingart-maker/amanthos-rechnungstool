@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit'
-import BlobStream from 'blob-stream'
+import blobStream from 'blob-stream'
 import type { InvoiceData } from '@/types/invoice'
 import { getBrandById, getCompanyForBrand } from '@/config/companies'
 import { calculateTotals } from '@/lib/vat-calculator'
@@ -25,13 +25,15 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: 50, bottom: 50, left: 60, right: 60 },
+    autoFirstPage: true,
+    bufferPages: true,
     info: {
       Title: `Rechnung ${data.invoiceNumber}`,
       Author: company.name,
     },
   })
 
-  const stream = doc.pipe(BlobStream())
+  const stream = doc.pipe(blobStream())
 
   // Render sections sequentially, tracking Y position
   let y = renderHeader(doc, company, brand)
@@ -60,7 +62,8 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
     const qrBill = new SwissQRBill(qrData)
     qrBill.attachTo(doc)
   } catch (err) {
-    console.error('QR Bill rendering failed:', err)
+    console.warn('QR Bill rendering skipped:', err)
+    // Continue without QR bill
   }
 
   doc.end()
@@ -68,9 +71,13 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   // Wait for stream to finish and return blob URL
   return new Promise<string>((resolve, reject) => {
     stream.on('finish', () => {
-      const blob = stream.toBlob('application/pdf')
-      const url = URL.createObjectURL(blob)
-      resolve(url)
+      try {
+        const blob = stream.toBlob('application/pdf')
+        const url = URL.createObjectURL(blob)
+        resolve(url)
+      } catch (err) {
+        reject(err)
+      }
     })
     stream.on('error', reject)
   })
@@ -80,8 +87,10 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
  * Trigger download of a blob URL.
  */
 export function downloadPdf(url: string, filename: string) {
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }

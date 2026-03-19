@@ -5,7 +5,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { companies, getBrandsByCompany } from '@/config/companies'
 import { useState } from 'react'
 
@@ -21,7 +20,7 @@ export function CompanySelector({ brandId, onBrandChange }: CompanySelectorProps
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <Label>Gesellschaft</Label>
+        <label className="text-xs font-medium text-primary">Gesellschaft *</label>
         <Select
           value={companyId}
           onValueChange={(val) => {
@@ -29,7 +28,7 @@ export function CompanySelector({ brandId, onBrandChange }: CompanySelectorProps
             onBrandChange('')
           }}
         >
-          <SelectTrigger>
+          <SelectTrigger className={!companyId ? 'border-primary/40 bg-primary/5' : ''}>
             <SelectValue placeholder="Gesellschaft waehlen..." />
           </SelectTrigger>
           <SelectContent>
@@ -44,12 +43,12 @@ export function CompanySelector({ brandId, onBrandChange }: CompanySelectorProps
 
       {companyId && (
         <div className="space-y-1.5">
-          <Label>Marke / Standort</Label>
+          <label className="text-xs font-medium text-primary">Marke / Standort *</label>
           <Select
             value={brandId}
             onValueChange={(val) => onBrandChange(val ?? '')}
           >
-            <SelectTrigger>
+            <SelectTrigger className={!brandId ? 'border-primary/40 bg-primary/5' : ''}>
               <SelectValue placeholder="Marke waehlen..." />
             </SelectTrigger>
             <SelectContent>
