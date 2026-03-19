@@ -70,9 +70,8 @@ export function DebtorForm({ debtor, onChange, errors }: DebtorFormProps) {
         <label className="text-xs font-medium text-muted-foreground">Land</label>
         <Input
           value={debtor.country}
-          onChange={(e) => update('country', e.target.value)}
-          placeholder="CH"
-          className="h-9 w-24"
+          disabled
+          className="h-9 w-24 bg-muted text-muted-foreground cursor-not-allowed"
         />
       </div>
     </div>

@@ -14,6 +14,7 @@ export interface Company {
 export interface Brand {
   id: string
   label: string
+  invoiceLabel: string
   shortCode: string
   companyId: string
   iban: string

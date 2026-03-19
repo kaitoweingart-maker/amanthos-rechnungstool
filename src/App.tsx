@@ -108,7 +108,7 @@ function InvoiceTool() {
     [company],
   )
 
-  const pdfFilename = `Rechnung_${invoiceNumber || 'entwurf'}.pdf`
+  const pdfFilename = `Rechnung_${brand?.invoiceLabel ? brand.invoiceLabel.replace(/\s+/g, '_') + '_' : ''}${invoiceNumber || 'entwurf'}.pdf`
 
   // When brand changes: auto-generate invoice number, reset positions with correct VAT
   const handleBrandChange = useCallback((newBrandId: string) => {

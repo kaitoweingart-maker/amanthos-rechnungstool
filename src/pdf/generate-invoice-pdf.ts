@@ -39,7 +39,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
     margins: { top: 40, bottom: 40, left: ML, right: MR },
     autoFirstPage: true,
     info: {
-      Title: `Rechnung ${data.invoiceNumber}`,
+      Title: `Rechnung ${brand.invoiceLabel} ${data.invoiceNumber}`,
       Author: company.name,
     },
   })
@@ -52,7 +52,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   // Logo top-right (flush right)
   if (logo) {
     try {
-      doc.image(logo, RE - 100, y, { fit: [100, 48] })
+      doc.image(logo, RE - 80, y, { fit: [100, 48] })
     } catch { /* skip */ }
   }
 
@@ -96,7 +96,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   // ─── INVOICE TITLE ───
   y += 28
   doc.font('Helvetica-Bold').fontSize(14).fillColor('#1a1a1a')
-  doc.text(`Rechnung ${data.invoiceNumber}`, ML, y, { width: CW })
+  doc.text(`Rechnung ${brand.invoiceLabel} ${data.invoiceNumber}`, ML, y, { width: CW })
 
   // ─── META ───
   y += 26

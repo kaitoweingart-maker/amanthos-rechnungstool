@@ -43,6 +43,7 @@ export const brands: Brand[] = [
   {
     id: 'pbr',
     label: 'Prize by Radisson',
+    invoiceLabel: 'Prize by Radisson Affoltern am Albis',
     shortCode: 'PBR',
     companyId: 'amanthos-hotel',
     iban: 'CH980024824819893101V',
@@ -51,6 +52,7 @@ export const brands: Brand[] = [
   {
     id: 'chs',
     label: 'Chalet Swiss',
+    invoiceLabel: 'Chalet Swiss Interlaken',
     shortCode: 'CHS',
     companyId: 'amanthos-hotel',
     iban: 'CH390024824819893102N',
@@ -59,6 +61,7 @@ export const brands: Brand[] = [
   {
     id: 'hmu',
     label: 'Hotel Mulin',
+    invoiceLabel: 'Hotel Mulin by Amanthos',
     shortCode: 'HMU',
     companyId: 'amanthos-hotel',
     iban: 'CH390024824819893102N',
@@ -67,6 +70,7 @@ export const brands: Brand[] = [
   {
     id: 'alz',
     label: 'Amanthos Living Zuerich Airport',
+    invoiceLabel: 'Amanthos Living Zuerich Airport',
     shortCode: 'ALZ',
     companyId: 'amanthos-living',
     iban: 'CH350024824819980202G',
@@ -75,6 +79,7 @@ export const brands: Brand[] = [
   {
     id: 'als',
     label: 'Amanthos Living Solothurn',
+    invoiceLabel: 'Amanthos Living Solothurn',
     shortCode: 'ALS',
     companyId: 'amanthos-living',
     iban: 'CH350024824819980202G',
@@ -83,6 +88,7 @@ export const brands: Brand[] = [
   {
     id: 'aln',
     label: 'Amanthos Living Nyon',
+    invoiceLabel: 'Amanthos Living Nyon',
     shortCode: 'ALN',
     companyId: 'amanthos-living',
     iban: 'CH350024824819980202G',
@@ -91,6 +97,7 @@ export const brands: Brand[] = [
   {
     id: 'ama',
     label: 'Amanthos AG',
+    invoiceLabel: 'Amanthos AG',
     shortCode: 'AMA',
     companyId: 'amanthos-ag',
     iban: 'CH910024824819993701R',

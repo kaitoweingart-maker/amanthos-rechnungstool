@@ -26,6 +26,6 @@ export function buildQrBillData(
       city: invoice.debtor.city,
       country: 'CH',
     },
-    message: `Rechnung ${invoice.invoiceNumber}`,
+    message: `Rechnung ${brand.invoiceLabel} ${invoice.invoiceNumber}`,
   }
 }
