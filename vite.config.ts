@@ -13,7 +13,7 @@ export default defineConfig({
       globals: { Buffer: true },
     }),
   ],
-  base: '/amanthos-rechnungstool/',
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
