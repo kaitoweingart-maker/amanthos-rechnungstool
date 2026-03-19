@@ -206,33 +206,15 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#1a1a1a')
   doc.text(brand.label, ML, y)
 
-  // ─── FOOTER (bottom of page 1) ───
-  const footY = 775
-  doc.strokeColor('#dddddd').lineWidth(0.3).moveTo(ML, footY).lineTo(RE, footY).stroke()
-  doc.font('Helvetica').fontSize(6.5).fillColor('#aaaaaa')
-  const col1X = ML
-  const col2X = ML + CW * 0.35
-  const col3X = ML + CW * 0.7
-  doc.text(company.name, col1X, footY + 7, { width: CW * 0.3 })
-  doc.text(company.address.street, col1X, footY + 16, { width: CW * 0.3 })
-  doc.text(`${company.address.zip} ${company.address.city}`, col1X, footY + 25, { width: CW * 0.3 })
-  doc.text('UBS Switzerland AG', col2X, footY + 7, { width: CW * 0.3 })
-  doc.text(`IBAN: ${formatIBAN(brand.iban)}`, col2X, footY + 16, { width: CW * 0.3 })
-  doc.text(`MWST-ID: ${company.uid}`, col3X, footY + 7, { width: CW * 0.3, align: 'right' })
-  doc.fillColor('#000000')
-
-  // ─── QR BILL (always, on a new page) ───
+  // ─── QR BILL (bottom of first page) ───
   try {
     const qrData = buildQrBillData(data, company, brand, totalGross)
     const qrBill = new SwissQRBill(qrData)
-    doc.addPage({ size: 'A4', margin: 0 })
     qrBill.attachTo(doc, 0, doc.page.height - SwissQRBill.height)
   } catch (err) {
-    // If QR bill fails, add error text to PDF so user can see what went wrong
     console.error('QR Bill rendering failed:', err)
-    doc.addPage({ size: 'A4', margin: 0 })
     doc.font('Helvetica').fontSize(10).fillColor('red')
-    doc.text(`QR-Einzahlungsschein konnte nicht erstellt werden: ${err instanceof Error ? err.message : String(err)}`, 60, 60, { width: 475 })
+    doc.text(`QR-Einzahlungsschein konnte nicht erstellt werden: ${err instanceof Error ? err.message : String(err)}`, ML, 750, { width: CW })
   }
 
   doc.end()
