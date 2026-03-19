@@ -9,16 +9,12 @@ import { formatDateCH, calculateDueDate } from '@/lib/date-utils'
 import { positionNetAmount } from '@/lib/vat-calculator'
 import { buildQrBillData } from './qr-bill-data'
 
-// Layout constants
-const ML = 56        // margin left
-const MR = 56        // margin right
-const PW = 595.28    // page width (A4)
-const CW = PW - ML - MR  // content width
-const RE = PW - MR  // right edge
+const ML = 60
+const MR = 60
+const PW = 595.28
+const CW = PW - ML - MR
+const RE = PW - MR
 
-/**
- * Fetch a logo as Buffer for PDFKit.
- */
 async function fetchLogo(path: string): Promise<Buffer | null> {
   try {
     const r = await fetch(path)
@@ -29,9 +25,6 @@ async function fetchLogo(path: string): Promise<Buffer | null> {
   }
 }
 
-/**
- * Generate a professional PDF invoice and return a blob URL.
- */
 export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   const brand = getBrandById(data.brandId)
   const company = getCompanyForBrand(data.brandId)
@@ -45,7 +38,6 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
     size: 'A4',
     margins: { top: 40, bottom: 40, left: ML, right: MR },
     autoFirstPage: true,
-    bufferPages: true,
     info: {
       Title: `Rechnung ${data.invoiceNumber}`,
       Author: company.name,
@@ -54,72 +46,61 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
 
   const stream = doc.pipe(blobStream())
 
-  let y = 40
+  // ─── HEADER AREA ───
+  let y = 45
 
-  // ─── LOGO (right-aligned) ───
+  // Logo top-right
   if (logo) {
     try {
-      doc.image(logo, RE - 140, y, { fit: [140, 50], align: 'right' })
+      doc.image(logo, RE - 130, y, { fit: [130, 48] })
     } catch { /* skip */ }
   }
 
-  // ─── COMPANY INFO (right side, below logo) ───
-  y = logo ? 100 : 50
-  doc.font('Helvetica').fontSize(9).fillColor('#333333')
-  const compLines = [
-    company.name,
-    company.address.street,
-    `${company.address.zip} ${company.address.city}`,
-  ]
-  for (const line of compLines) {
-    doc.text(line, ML + CW / 2, y, { width: CW / 2, align: 'right' })
-    y += 12
-  }
+  // Company info - top right, below logo
+  const compY = logo ? 100 : 50
+  doc.font('Helvetica').fontSize(8.5).fillColor('#333333')
+  doc.text(company.name, 340, compY, { width: RE - 340, align: 'right' })
+  doc.text(company.address.street, 340, compY + 11, { width: RE - 340, align: 'right' })
+  doc.text(`${company.address.zip} ${company.address.city}`, 340, compY + 22, { width: RE - 340, align: 'right' })
 
-  // ─── DEBTOR ADDRESS (left side) ───
-  const debtorY = logo ? 110 : 60
-  doc.font('Helvetica').fontSize(6.5).fillColor('#aaaaaa')
+  // ─── DEBTOR (left, with sender line) ───
+  const debY = logo ? 155 : 120
+  // Small sender line
+  doc.font('Helvetica').fontSize(6).fillColor('#bbbbbb')
   doc.text(
     `${company.name} · ${company.address.street} · ${company.address.zip} ${company.address.city}`,
-    ML, debtorY,
+    ML, debY,
   )
-
-  let dy = debtorY + 14
-  doc.font('Helvetica').fontSize(9.5).fillColor('#1a1a1a')
+  // Debtor address
+  doc.font('Helvetica').fontSize(10).fillColor('#1a1a1a')
+  let dY = debY + 16
   const debtorLines = [data.debtor.name, data.debtor.street, `${data.debtor.zip} ${data.debtor.city}`]
   if (data.debtor.country && data.debtor.country !== 'CH' && data.debtor.country !== 'Schweiz') {
     debtorLines.push(data.debtor.country)
   }
   for (const line of debtorLines) {
-    doc.text(line, ML, dy)
-    dy += 14
+    doc.text(line, ML, dY, { width: 250 })
+    dY += 14
   }
 
-  // ─── REFERENCE + CONTACT (right side, same height as debtor) ───
-  let ry = debtorY + 14
-  doc.font('Helvetica').fontSize(8).fillColor('#777777')
-  const refLines = [
-    `UID: ${company.uid}`,
-    `IBAN: ${formatIBAN(brand.iban)}`,
-  ]
-  for (const line of refLines) {
-    doc.text(line, ML + CW / 2, ry, { width: CW / 2, align: 'right' })
-    ry += 11
-  }
+  // ─── RIGHT SIDE: UID + IBAN (same height as debtor) ───
+  doc.font('Helvetica').fontSize(7.5).fillColor('#888888')
+  doc.text(`UID: ${company.uid}`, 340, debY + 16, { width: RE - 340, align: 'right' })
+  doc.text(`IBAN: ${formatIBAN(brand.iban)}`, 340, debY + 27, { width: RE - 340, align: 'right' })
 
-  // ─── DATE (right-aligned) ───
-  y = Math.max(dy, ry) + 20
+  // ─── DATE (right) ───
+  y = dY + 25
   doc.font('Helvetica').fontSize(9).fillColor('#555555')
-  doc.text(`Datum: ${formatDateCH(data.invoiceDate)}`, ML + CW / 2, y, { width: CW / 2, align: 'right' })
+  doc.text(`Datum: ${formatDateCH(data.invoiceDate)}`, 340, y, { width: RE - 340, align: 'right' })
 
-  // ─── TITLE ───
-  y += 30
-  doc.font('Helvetica-Bold').fontSize(15).fillColor('#1a1a1a')
-  doc.text(`Rechnung ${data.invoiceNumber}`, ML, y)
-
-  // ─── META INFO ───
+  // ─── INVOICE TITLE ───
   y += 28
-  doc.font('Helvetica').fontSize(8.5).fillColor('#555555')
+  doc.font('Helvetica-Bold').fontSize(14).fillColor('#1a1a1a')
+  doc.text(`Rechnung ${data.invoiceNumber}`, ML, y, { width: CW })
+
+  // ─── META ───
+  y += 26
+  doc.font('Helvetica').fontSize(8.5)
   const metaItems: [string, string][] = [
     ['Zahlbar bis:', formatDateCH(dueDate)],
     ['Zahlungsfrist:', `${data.paymentTermDays} Tage netto`],
@@ -132,87 +113,80 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
     )
   }
   for (const [label, value] of metaItems) {
-    doc.fillColor('#999999').text(label, ML, y, { continued: true, width: 100 })
-    doc.fillColor('#333333').text(`  ${value}`, { width: 200 })
+    doc.fillColor('#999999').text(label, ML, y, { width: 90 })
+    doc.fillColor('#333333').text(value, ML + 95, y, { width: 200 })
     y += 13
   }
 
   // ─── POSITIONS TABLE ───
-  y += 14
+  y += 16
 
-  // Header line
-  doc.strokeColor('#1a1a1a').lineWidth(0.6).moveTo(ML, y).lineTo(RE, y).stroke()
+  // Top line
+  doc.strokeColor('#1a1a1a').lineWidth(0.5).moveTo(ML, y).lineTo(RE, y).stroke()
   y += 6
 
+  // Table header
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#555555')
   doc.text('Pos.', ML, y, { width: 28 })
-  doc.text('Bezeichnung', ML + 30, y, { width: 220 })
-  doc.text('Menge', 330, y, { width: 45, align: 'right' })
-  doc.text('Einzelpreis', 385, y, { width: 60, align: 'right' })
-  doc.text('MWST', 450, y, { width: 35, align: 'right' })
-  doc.text('Gesamtpreis', RE - 65, y, { width: 65, align: 'right' })
+  doc.text('Bezeichnung', ML + 32, y, { width: 200 })
+  doc.text('Menge', 320, y, { width: 40, align: 'right' })
+  doc.text('Einzelpreis', 370, y, { width: 65, align: 'right' })
+  doc.text('MWST', 440, y, { width: 30, align: 'right' })
+  doc.text('Gesamtpreis', RE - 70, y, { width: 70, align: 'right' })
 
-  y += 13
+  y += 14
   doc.strokeColor('#cccccc').lineWidth(0.3).moveTo(ML, y).lineTo(RE, y).stroke()
-  y += 8
+  y += 7
 
-  // Rows
+  // Table rows
   doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a')
   data.positions.forEach((pos, i) => {
     const net = positionNetAmount(pos)
     doc.text(`${i + 1}`, ML, y, { width: 28 })
-    doc.text(pos.description, ML + 30, y, { width: 220 })
-    doc.text(String(pos.quantity), 330, y, { width: 45, align: 'right' })
-    doc.text(`${formatCHF(pos.unitPrice)} CHF`, 385, y, { width: 60, align: 'right' })
-    doc.text(`${pos.vatRate}%`, 450, y, { width: 35, align: 'right' })
-    doc.text(`${formatCHF(net)} CHF`, RE - 65, y, { width: 65, align: 'right' })
+    doc.text(pos.description, ML + 32, y, { width: 200 })
+    doc.text(String(pos.quantity), 320, y, { width: 40, align: 'right' })
+    doc.text(`${formatCHF(pos.unitPrice)} CHF`, 370, y, { width: 65, align: 'right' })
+    doc.text(`${pos.vatRate}%`, 440, y, { width: 30, align: 'right' })
+    doc.text(`${formatCHF(net)} CHF`, RE - 70, y, { width: 70, align: 'right' })
     y += 16
   })
 
-  // Bottom line
+  // Double bottom line
   y += 2
-  doc.strokeColor('#1a1a1a').lineWidth(0.6).moveTo(ML, y).lineTo(RE, y).stroke()
-  y += 4
+  doc.strokeColor('#1a1a1a').lineWidth(0.5).moveTo(ML, y).lineTo(RE, y).stroke()
+  y += 3
   doc.strokeColor('#1a1a1a').lineWidth(0.3).moveTo(ML, y).lineTo(RE, y).stroke()
 
-  // ─── TOTALS ───
-  y += 14
-  const labelX = RE - 200
-  const valX = RE - 75
-  const valW = 75
+  // ─── TOTALS (right-aligned) ───
+  y += 16
+  const totLabelX = RE - 200
+  const totValX = RE - 80
+  const totValW = 80
 
   doc.font('Helvetica').fontSize(9).fillColor('#333333')
-
-  // Netto per VAT group
-  for (const group of vatGroups) {
-    doc.text(`Nettopreis ${group.rate}%`, labelX, y, { width: 120 })
-    doc.text(`${formatCHF(group.netAmount)} CHF`, valX, y, { width: valW, align: 'right' })
+  for (const g of vatGroups) {
+    doc.text(`Nettopreis`, totLabelX, y, { width: 110 })
+    doc.text(`${formatCHF(g.netAmount)} CHF`, totValX, y, { width: totValW, align: 'right' })
+    y += 14
+  }
+  for (const g of vatGroups) {
+    doc.text(`Zzgl. ${g.rate}% MWST`, totLabelX, y, { width: 110 })
+    doc.text(`${formatCHF(g.vatAmount)} CHF`, totValX, y, { width: totValW, align: 'right' })
     y += 14
   }
 
-  // VAT per group
-  for (const group of vatGroups) {
-    doc.text(`Zzgl. ${group.rate}% MWST`, labelX, y, { width: 120 })
-    doc.text(`${formatCHF(group.vatAmount)} CHF`, valX, y, { width: valW, align: 'right' })
-    y += 14
-  }
-
-  // Total separator
+  // Separator + Total
   y += 2
-  doc.strokeColor('#1a1a1a').lineWidth(0.8).moveTo(labelX, y).lineTo(RE, y).stroke()
+  doc.strokeColor('#1a1a1a').lineWidth(0.7).moveTo(totLabelX, y).lineTo(RE, y).stroke()
   y += 8
-
-  // Rechnungsbetrag
   doc.font('Helvetica-Bold').fontSize(11).fillColor('#1a1a1a')
-  doc.text('Rechnungsbetrag', labelX, y, { width: 120 })
-  doc.text(`${formatCHF(totalGross)} CHF`, valX, y, { width: valW, align: 'right' })
+  doc.text('Rechnungsbetrag', totLabelX, y, { width: 110 })
+  doc.text(`${formatCHF(totalGross)} CHF`, totValX, y, { width: totValW, align: 'right' })
 
-  // BEZAHLT badge
   if (data.isPaid) {
-    y += 20
+    y += 22
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#16a34a')
-    doc.text('BEZAHLT', labelX, y, { width: 120 + valW, align: 'right' })
-    doc.fillColor('#000000')
+    doc.text('BEZAHLT', totLabelX, y, { width: 110 + totValW, align: 'right' })
   }
 
   // ─── CLOSING TEXT ───
@@ -223,37 +197,36 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
       `Bitte ueberweisen Sie den Rechnungsbetrag innerhalb von ${data.paymentTermDays} Tagen auf unser unten genanntes Konto.`,
       ML, y, { width: CW },
     )
-    y += 12
+    y += 22
   }
   doc.text('Fuer weitere Fragen stehen wir Ihnen sehr gerne zur Verfuegung.', ML, y, { width: CW })
   y += 18
   doc.text('Mit freundlichen Gruessen', ML, y)
 
-  // ─── PAGE FOOTER ───
-  const footerY = 780
-  doc.strokeColor('#cccccc').lineWidth(0.3).moveTo(ML, footerY).lineTo(RE, footerY).stroke()
-
-  const fY = footerY + 8
-  doc.font('Helvetica').fontSize(7).fillColor('#999999')
-
-  // 3 columns
-  doc.text(company.name, ML, fY)
-  doc.text(company.address.street, ML, fY + 9)
-  doc.text(`${company.address.zip} ${company.address.city}`, ML, fY + 18)
-
-  doc.text('UBS Switzerland AG', ML + CW / 3, fY)
-  doc.text(`IBAN: ${formatIBAN(brand.iban)}`, ML + CW / 3, fY + 9)
-
-  doc.text(`MWST-ID: ${company.uid}`, ML + (CW * 2) / 3, fY, { width: CW / 3, align: 'right' })
-
+  // ─── FOOTER (bottom of page 1) ───
+  const footY = 775
+  doc.strokeColor('#dddddd').lineWidth(0.3).moveTo(ML, footY).lineTo(RE, footY).stroke()
+  doc.font('Helvetica').fontSize(6.5).fillColor('#aaaaaa')
+  const col1X = ML
+  const col2X = ML + CW * 0.35
+  const col3X = ML + CW * 0.7
+  doc.text(company.name, col1X, footY + 7, { width: CW * 0.3 })
+  doc.text(company.address.street, col1X, footY + 16, { width: CW * 0.3 })
+  doc.text(`${company.address.zip} ${company.address.city}`, col1X, footY + 25, { width: CW * 0.3 })
+  doc.text('UBS Switzerland AG', col2X, footY + 7, { width: CW * 0.3 })
+  doc.text(`IBAN: ${formatIBAN(brand.iban)}`, col2X, footY + 16, { width: CW * 0.3 })
+  doc.text(`MWST-ID: ${company.uid}`, col3X, footY + 7, { width: CW * 0.3, align: 'right' })
   doc.fillColor('#000000')
 
-  // ─── QR BILL ───
+  // ─── QR BILL (on a new page) ───
   if (!data.isPaid) {
     try {
       const qrData = buildQrBillData(data, company, brand, totalGross)
       const qrBill = new SwissQRBill(qrData)
-      qrBill.attachTo(doc)
+      // Add a dedicated page for the QR bill
+      doc.addPage({ size: 'A4', margin: 0 })
+      const qrY = doc.page.height - SwissQRBill.height
+      qrBill.attachTo(doc, 0, qrY)
     } catch (err) {
       console.warn('QR Bill rendering failed:', err)
     }
@@ -274,9 +247,6 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   })
 }
 
-/**
- * Trigger download of a blob URL.
- */
 export function downloadPdf(url: string, filename: string) {
   const a = document.createElement('a')
   a.href = url
