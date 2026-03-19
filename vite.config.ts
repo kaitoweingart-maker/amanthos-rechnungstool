@@ -13,7 +13,7 @@ export default defineConfig({
       globals: { Buffer: true, process: true },
     }),
   ],
-  base: '/',
+  base: process.env.GITHUB_ACTIONS ? '/amanthos-rechnungstool/' : '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
