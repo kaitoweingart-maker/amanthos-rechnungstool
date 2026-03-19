@@ -27,41 +27,42 @@ export function PositionRow({ position, onChange, onRemove, canRemove }: Positio
   const netAmount = positionNetAmount(position)
 
   return (
-    <tr>
-      <td className="p-1">
+    <tr className="border-b border-muted/50 last:border-0">
+      <td className="p-1.5">
         <Input
           value={position.description}
           onChange={(e) => update('description', e.target.value)}
-          placeholder="Beschreibung"
-          className="text-sm"
+          placeholder="z.B. Uebernachtung DZ"
+          className="text-sm h-9"
         />
       </td>
-      <td className="p-1">
+      <td className="p-1.5">
         <Input
           type="number"
           min={0}
           step={1}
           value={position.quantity || ''}
           onChange={(e) => update('quantity', parseFloat(e.target.value) || 0)}
-          className="w-20 text-sm text-right"
+          className="w-20 text-sm text-right h-9"
         />
       </td>
-      <td className="p-1">
+      <td className="p-1.5">
         <Input
           type="number"
           min={0}
-          step={0.01}
+          step={0.05}
           value={position.unitPrice || ''}
           onChange={(e) => update('unitPrice', parseFloat(e.target.value) || 0)}
-          className="w-28 text-sm text-right"
+          placeholder="0.00"
+          className="w-28 text-sm text-right h-9"
         />
       </td>
-      <td className="p-1">
+      <td className="p-1.5">
         <Select
           value={String(position.vatRate)}
           onValueChange={(v) => { if (v) update('vatRate', parseFloat(v) as VatRate) }}
         >
-          <SelectTrigger className="w-28 text-sm">
+          <SelectTrigger className="w-32 text-sm h-9">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -73,17 +74,17 @@ export function PositionRow({ position, onChange, onRemove, canRemove }: Positio
           </SelectContent>
         </Select>
       </td>
-      <td className="p-1 text-right text-sm whitespace-nowrap pr-2">
+      <td className="p-1.5 text-right text-sm font-medium whitespace-nowrap pr-2 tabular-nums">
         {formatCHF(netAmount)}
       </td>
-      <td className="p-1">
+      <td className="p-1.5">
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={onRemove}
           disabled={!canRemove}
-          className="text-destructive hover:text-destructive"
+          className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
         >
           &times;
         </Button>

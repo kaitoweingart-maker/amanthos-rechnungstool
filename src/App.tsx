@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { LoginScreen } from '@/components/layout/LoginScreen'
 import { CompanySelector } from '@/components/invoice-form/CompanySelector'
 import { InvoiceNumber } from '@/components/invoice-form/InvoiceNumber'
 import { DebtorForm } from '@/components/invoice-form/DebtorForm'
@@ -12,9 +13,9 @@ import { PdfPreviewDialog } from '@/components/pdf-preview/PdfPreviewDialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getBrandById, getCompanyForBrand } from '@/config/companies'
+import { getDefaultVatRate } from '@/config/vat-rates'
 import { DEFAULT_PAYMENT_TERM } from '@/config/constants'
 import { todayISO, calculateDueDate, formatDateCH } from '@/lib/date-utils'
 import { formatCHF, formatIBAN } from '@/lib/swiss-format'
@@ -25,6 +26,25 @@ import { generateInvoicePdf, downloadPdf } from '@/pdf/generate-invoice-pdf'
 import type { DebtorAddress, InvoiceData, InvoicePosition, PaymentTermDays } from '@/types/invoice'
 
 export default function App() {
+  const [authenticated, setAuthenticated] = useState(
+    () => sessionStorage.getItem('amanthos-auth') === 'true',
+  )
+
+  if (!authenticated) {
+    return (
+      <LoginScreen
+        onSuccess={() => {
+          sessionStorage.setItem('amanthos-auth', 'true')
+          setAuthenticated(true)
+        }}
+      />
+    )
+  }
+
+  return <InvoiceTool />
+}
+
+function InvoiceTool() {
   const [brandId, setBrandId] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [invoiceDate, setInvoiceDate] = useState(todayISO())
@@ -54,12 +74,24 @@ export default function App() {
     [invoiceDate, paymentTermDays],
   )
 
+  const defaultVatRate = useMemo(
+    () => (company ? getDefaultVatRate(company.id) : 8.1 as const),
+    [company],
+  )
+
   const pdfFilename = `Rechnung_${invoiceNumber || 'entwurf'}.pdf`
 
-  function handleBrandChange(newBrandId: string) {
+  const handleBrandChange = useCallback((newBrandId: string) => {
     setBrandId(newBrandId)
     setInvoiceNumber('')
-  }
+    // Reset positions with correct VAT rate for new company
+    const newBrand = getBrandById(newBrandId)
+    if (newBrand) {
+      const newCompany = getCompanyForBrand(newBrandId)
+      const vatRate = newCompany ? getDefaultVatRate(newCompany.id) : 8.1 as const
+      setPositions([createEmptyPosition(vatRate)])
+    }
+  }, [])
 
   function buildInvoiceData(): InvoiceData {
     return {
@@ -94,7 +126,6 @@ export default function App() {
     setGenerating(true)
     try {
       const url = await generateInvoicePdf(buildInvoiceData())
-      // Revoke previous URL
       if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current)
       prevUrlRef.current = url
       setPreviewUrl(url)
@@ -111,15 +142,14 @@ export default function App() {
     if (!validateForm()) return
     setGenerating(true)
     try {
-      // Increment counter when downloading
       if (brand) {
         const year = new Date(invoiceDate).getFullYear()
         getNext(brand.shortCode, year)
       }
-
       const url = await generateInvoicePdf(buildInvoiceData())
       downloadPdf(url, pdfFilename)
-      URL.revokeObjectURL(url)
+      // Don't revoke immediately - give browser time to process
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
     } catch (err) {
       console.error('PDF generation failed:', err)
       alert('PDF-Erstellung fehlgeschlagen. Siehe Konsole fuer Details.')
@@ -128,109 +158,108 @@ export default function App() {
     }
   }
 
-  function handlePreviewClose() {
-    setPreviewOpen(false)
-  }
+  const hasErrors = Object.keys(errors).length > 0
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Header />
-      <main className="flex-1 container max-w-6xl mx-auto p-6">
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-6 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
+            {/* Gesellschaft & Rechnungsdaten */}
             <Card>
-              <CardContent className="p-6 space-y-6">
-                <CompanySelector brandId={brandId} onBrandChange={handleBrandChange} />
+              <CardContent className="p-5 space-y-5">
+                <div>
+                  <h2 className="text-base font-semibold mb-3">Absender</h2>
+                  <CompanySelector brandId={brandId} onBrandChange={handleBrandChange} />
+                </div>
                 <Separator />
-                <InvoiceNumber
-                  brandId={brandId}
-                  invoiceNumber={invoiceNumber}
-                  invoiceDate={invoiceDate}
-                  onInvoiceNumberChange={setInvoiceNumber}
-                  onDateChange={setInvoiceDate}
-                />
-                <Separator />
+                <div>
+                  <h2 className="text-base font-semibold mb-3">Rechnungsdaten</h2>
+                  <InvoiceNumber
+                    brandId={brandId}
+                    invoiceNumber={invoiceNumber}
+                    invoiceDate={invoiceDate}
+                    onInvoiceNumberChange={setInvoiceNumber}
+                    onDateChange={setInvoiceDate}
+                  />
+                  <div className="mt-3">
+                    <PaymentTerms value={paymentTermDays} onChange={setPaymentTermDays} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Empfaenger */}
+            <Card>
+              <CardContent className="p-5">
                 <DebtorForm debtor={debtor} onChange={setDebtor} errors={errors} />
-                <Separator />
-                <PaymentTerms value={paymentTermDays} onChange={setPaymentTermDays} />
               </CardContent>
             </Card>
 
+            {/* Positionen & Totals */}
             <Card>
-              <CardContent className="p-6 space-y-6">
-                <PositionsTable positions={positions} onChange={setPositions} />
-                <Separator />
-                <VatSummary vatGroups={totals.vatGroups} />
-                <Separator />
-                <InvoiceTotals
-                  totalNet={totals.totalNet}
-                  totalVat={totals.totalVat}
-                  totalGross={totals.totalGross}
+              <CardContent className="p-5 space-y-5">
+                <PositionsTable
+                  positions={positions}
+                  onChange={setPositions}
+                  defaultVatRate={defaultVatRate}
                 />
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <VatSummary vatGroups={totals.vatGroups} />
+                  <InvoiceTotals
+                    totalNet={totals.totalNet}
+                    totalVat={totals.totalVat}
+                    totalGross={totals.totalGross}
+                  />
+                </div>
               </CardContent>
             </Card>
 
+            {/* Bemerkungen */}
             <Card>
-              <CardContent className="p-6">
-                <Label>Bemerkungen (optional)</Label>
-                <Input
+              <CardContent className="p-5">
+                <Label className="text-sm font-medium">Bemerkungen (optional)</Label>
+                <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Zusaetzliche Bemerkungen auf der Rechnung..."
-                  className="mt-1.5"
+                  rows={2}
+                  className="mt-1.5 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 />
               </CardContent>
             </Card>
           </div>
 
-          {/* Right: Summary + Actions */}
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <h3 className="font-medium">Zusammenfassung</h3>
+          {/* Right: Summary + Actions (sticky) */}
+          <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+            <Card className="shadow-sm">
+              <CardContent className="p-5 space-y-3">
+                <h3 className="font-semibold text-base">Zusammenfassung</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gesellschaft</span>
-                    <span>{company?.name ?? '–'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Marke</span>
-                    <span>{brand?.label ?? '–'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">UID</span>
-                    <span>{company?.uid ?? '–'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">IBAN</span>
-                    <span className="text-xs font-mono">
-                      {brand ? formatIBAN(brand.iban) : '–'}
-                    </span>
-                  </div>
+                  <SummaryRow label="Gesellschaft" value={company?.name ?? '–'} />
+                  <SummaryRow label="Marke" value={brand?.label ?? '–'} />
+                  <SummaryRow label="UID" value={company?.uid ?? '–'} />
+                  <SummaryRow
+                    label="IBAN"
+                    value={brand ? formatIBAN(brand.iban) : '–'}
+                    mono
+                  />
                   <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Rechnungsnr.</span>
-                    <span className="font-mono">{invoiceNumber || '–'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Datum</span>
-                    <span>{formatDateCH(invoiceDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Faellig</span>
-                    <span>{formatDateCH(dueDate)}</span>
-                  </div>
+                  <SummaryRow label="Rechnungsnr." value={invoiceNumber || '–'} mono />
+                  <SummaryRow label="Datum" value={formatDateCH(invoiceDate)} />
+                  <SummaryRow label="Faellig" value={formatDateCH(dueDate)} />
                   <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Netto</span>
-                    <span>{formatCHF(totals.totalNet)} CHF</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">MWST</span>
-                    <span>{formatCHF(totals.totalVat)} CHF</span>
-                  </div>
-                  <div className="flex justify-between font-semibold">
+                  <SummaryRow label="Netto" value={`${formatCHF(totals.totalNet)} CHF`} />
+                  <SummaryRow
+                    label="MWST"
+                    value={`${formatCHF(totals.totalVat)} CHF`}
+                    muted
+                  />
+                  <Separator />
+                  <div className="flex justify-between font-semibold text-base pt-1">
                     <span>Total</span>
                     <span>{formatCHF(totals.totalGross)} CHF</span>
                   </div>
@@ -248,23 +277,20 @@ export default function App() {
                 Vorschau
               </Button>
               <Button
-                className="w-full"
-                size="lg"
+                className="w-full h-12 text-base font-semibold"
                 onClick={handleDownload}
                 disabled={generating || !brandId}
               >
-                {generating ? 'Wird erstellt...' : 'PDF erstellen & herunterladen'}
+                {generating ? 'Wird erstellt...' : 'PDF herunterladen'}
               </Button>
             </div>
 
-            {Object.keys(errors).length > 0 && (
-              <Card className="border-destructive">
-                <CardContent className="p-4">
-                  <p className="text-sm text-destructive font-medium">
-                    Bitte alle Pflichtfelder ausfuellen.
-                  </p>
-                </CardContent>
-              </Card>
+            {hasErrors && (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3">
+                <p className="text-sm text-destructive font-medium">
+                  Bitte alle Pflichtfelder ausfuellen.
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -273,10 +299,33 @@ export default function App() {
 
       <PdfPreviewDialog
         open={previewOpen}
-        onClose={handlePreviewClose}
+        onClose={() => setPreviewOpen(false)}
         pdfUrl={previewUrl}
         filename={pdfFilename}
       />
+    </div>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  mono,
+  muted,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  muted?: boolean
+}) {
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span
+        className={`text-right truncate ${mono ? 'font-mono text-xs' : ''} ${muted ? 'text-muted-foreground' : ''}`}
+      >
+        {value}
+      </span>
     </div>
   )
 }

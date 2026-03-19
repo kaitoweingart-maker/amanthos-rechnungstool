@@ -1,26 +1,26 @@
 import { Button } from '@/components/ui/button'
 import { PositionRow } from './PositionRow'
-import { DEFAULT_VAT_RATE } from '@/config/vat-rates'
-import type { InvoicePosition } from '@/types/invoice'
+import type { InvoicePosition, VatRate } from '@/types/invoice'
 
 interface PositionsTableProps {
   positions: InvoicePosition[]
   onChange: (positions: InvoicePosition[]) => void
+  defaultVatRate: VatRate
 }
 
-function createEmptyPosition(): InvoicePosition {
+export function createEmptyPosition(vatRate: VatRate = 8.1): InvoicePosition {
   return {
     id: crypto.randomUUID(),
     description: '',
     quantity: 1,
     unitPrice: 0,
-    vatRate: DEFAULT_VAT_RATE,
+    vatRate,
   }
 }
 
-export function PositionsTable({ positions, onChange }: PositionsTableProps) {
+export function PositionsTable({ positions, onChange, defaultVatRate }: PositionsTableProps) {
   function addPosition() {
-    onChange([...positions, createEmptyPosition()])
+    onChange([...positions, createEmptyPosition(defaultVatRate)])
   }
 
   function updatePosition(index: number, position: InvoicePosition) {
@@ -34,18 +34,18 @@ export function PositionsTable({ positions, onChange }: PositionsTableProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <h3 className="text-sm font-medium">Positionen</h3>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-xs text-muted-foreground">
-              <th className="text-left p-1 font-medium">Beschreibung</th>
-              <th className="text-right p-1 font-medium w-20">Menge</th>
-              <th className="text-right p-1 font-medium w-28">Einzelpreis</th>
-              <th className="text-left p-1 font-medium w-28">MWST</th>
-              <th className="text-right p-1 font-medium w-24">Betrag</th>
-              <th className="p-1 w-10"></th>
+            <tr className="text-xs text-muted-foreground border-b">
+              <th className="text-left p-2 font-medium">Beschreibung</th>
+              <th className="text-right p-2 font-medium w-20">Menge</th>
+              <th className="text-right p-2 font-medium w-28">Einzelpreis</th>
+              <th className="text-left p-2 font-medium w-32">MWST</th>
+              <th className="text-right p-2 font-medium w-28">Betrag</th>
+              <th className="p-2 w-10"></th>
             </tr>
           </thead>
           <tbody>
@@ -67,5 +67,3 @@ export function PositionsTable({ positions, onChange }: PositionsTableProps) {
     </div>
   )
 }
-
-export { createEmptyPosition }
