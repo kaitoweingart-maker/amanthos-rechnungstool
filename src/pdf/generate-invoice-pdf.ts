@@ -36,7 +36,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
 
   const doc = new PDFDocument({
     size: 'A4',
-    margins: { top: 40, bottom: 40, left: ML, right: MR },
+    margins: { top: 40, bottom: 0, left: ML, right: MR },
     autoFirstPage: true,
     info: {
       Title: `Rechnung ${brand.invoiceLabel} ${data.invoiceNumber}`,

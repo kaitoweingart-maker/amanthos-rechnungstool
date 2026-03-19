@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import type { DebtorAddress } from '@/types/invoice'
 
@@ -8,6 +9,8 @@ interface DebtorFormProps {
 }
 
 export function DebtorForm({ debtor, onChange, errors }: DebtorFormProps) {
+  const [countryEditable, setCountryEditable] = useState(false)
+
   function update(field: keyof DebtorAddress, value: string) {
     onChange({ ...debtor, [field]: value })
   }
@@ -68,11 +71,27 @@ export function DebtorForm({ debtor, onChange, errors }: DebtorFormProps) {
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground">Land</label>
-        <Input
-          value={debtor.country}
-          disabled
-          className="h-9 w-24 bg-muted text-muted-foreground cursor-not-allowed"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            value={debtor.country}
+            onChange={(e) => update('country', e.target.value.toUpperCase().slice(0, 2))}
+            placeholder="CH"
+            disabled={!countryEditable}
+            maxLength={2}
+            className={`h-9 w-24 ${!countryEditable ? 'bg-muted text-muted-foreground cursor-not-allowed' : ''}`}
+          />
+          {!countryEditable ? (
+            <button
+              type="button"
+              onClick={() => setCountryEditable(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              Aendern
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground">ISO-Code, 2 Zeichen (z.B. DE, AT)</span>
+          )}
+        </div>
       </div>
     </div>
   )
