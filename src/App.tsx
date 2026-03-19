@@ -3,7 +3,6 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { LoginScreen } from '@/components/layout/LoginScreen'
 import { CompanySelector } from '@/components/invoice-form/CompanySelector'
-import { InvoiceNumber } from '@/components/invoice-form/InvoiceNumber'
 import { DebtorForm } from '@/components/invoice-form/DebtorForm'
 import { PaymentTerms } from '@/components/invoice-form/PaymentTerms'
 import { PositionsTable, createEmptyPosition } from '@/components/invoice-form/PositionsTable'
@@ -20,6 +19,7 @@ import { DEFAULT_PAYMENT_TERM } from '@/config/constants'
 import { todayISO, calculateDueDate, formatDateCH } from '@/lib/date-utils'
 import { formatCHF, formatIBAN } from '@/lib/swiss-format'
 import { calculateTotals } from '@/lib/vat-calculator'
+import { generateInvoiceNumber } from '@/lib/invoice-number'
 import { invoiceSchema } from '@/lib/validation'
 import { useCounterStore } from '@/store/counter-store'
 import { generateInvoicePdf, downloadPdf } from '@/pdf/generate-invoice-pdf'
@@ -56,7 +56,7 @@ function InvoiceTool() {
     city: '',
     country: 'CH',
   })
-  const [positions, setPositions] = useState<InvoicePosition[]>([createEmptyPosition()])
+  const [positions, setPositions] = useState<InvoicePosition[]>([])
   const [notes, setNotes] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [generating, setGenerating] = useState(false)
@@ -65,6 +65,7 @@ function InvoiceTool() {
   const prevUrlRef = useRef<string | null>(null)
 
   const getNext = useCounterStore((s) => s.getNext)
+  const peek = useCounterStore((s) => s.peek)
   const brand = getBrandById(brandId)
   const company = getCompanyForBrand(brandId)
 
@@ -75,23 +76,29 @@ function InvoiceTool() {
   )
 
   const defaultVatRate = useMemo(
-    () => (company ? getDefaultVatRate(company.id) : 8.1 as const),
+    () => (company ? getDefaultVatRate(company.id) : 3.8 as const),
     [company],
   )
 
   const pdfFilename = `Rechnung_${invoiceNumber || 'entwurf'}.pdf`
 
+  // When brand changes: auto-generate invoice number, reset positions with correct VAT
   const handleBrandChange = useCallback((newBrandId: string) => {
     setBrandId(newBrandId)
-    setInvoiceNumber('')
-    // Reset positions with correct VAT rate for new company
     const newBrand = getBrandById(newBrandId)
     if (newBrand) {
       const newCompany = getCompanyForBrand(newBrandId)
-      const vatRate = newCompany ? getDefaultVatRate(newCompany.id) : 8.1 as const
+      const vatRate = newCompany ? getDefaultVatRate(newCompany.id) : 3.8 as const
       setPositions([createEmptyPosition(vatRate)])
+      // Auto-generate invoice number immediately
+      const year = new Date(invoiceDate).getFullYear()
+      const nextSeq = peek(newBrand.shortCode, year)
+      setInvoiceNumber(generateInvoiceNumber(newBrand.shortCode, year, nextSeq))
+    } else {
+      setPositions([])
+      setInvoiceNumber('')
     }
-  }, [])
+  }, [invoiceDate, peek])
 
   function buildInvoiceData(): InvoiceData {
     return {
@@ -148,7 +155,6 @@ function InvoiceTool() {
       }
       const url = await generateInvoicePdf(buildInvoiceData())
       downloadPdf(url, pdfFilename)
-      // Don't revoke immediately - give browser time to process
       setTimeout(() => URL.revokeObjectURL(url), 5000)
     } catch (err) {
       console.error('PDF generation failed:', err)
@@ -159,141 +165,184 @@ function InvoiceTool() {
   }
 
   const hasErrors = Object.keys(errors).length > 0
+  const brandSelected = !!brandId
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-6 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Form */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Gesellschaft & Rechnungsdaten */}
-            <Card>
-              <CardContent className="p-5 space-y-5">
-                <div>
-                  <h2 className="text-base font-semibold mb-3">Absender</h2>
-                  <CompanySelector brandId={brandId} onBrandChange={handleBrandChange} />
-                </div>
-                <Separator />
-                <div>
-                  <h2 className="text-base font-semibold mb-3">Rechnungsdaten</h2>
-                  <InvoiceNumber
-                    brandId={brandId}
-                    invoiceNumber={invoiceNumber}
-                    invoiceDate={invoiceDate}
-                    onInvoiceNumberChange={setInvoiceNumber}
-                    onDateChange={setInvoiceDate}
-                  />
-                  <div className="mt-3">
-                    <PaymentTerms value={paymentTermDays} onChange={setPaymentTermDays} />
+        {/* Step 1: Select company */}
+        <Card className="mb-4 border-primary/20">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+              <h2 className="text-base font-semibold">Absender waehlen</h2>
+            </div>
+            <CompanySelector brandId={brandId} onBrandChange={handleBrandChange} />
+          </CardContent>
+        </Card>
+
+        {brandSelected && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Left: Form */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Rechnungsdaten + Empfaenger nebeneinander */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                      <h2 className="text-base font-semibold">Rechnungsdaten</h2>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Rechnungsdatum</Label>
+                        <input
+                          type="date"
+                          value={invoiceDate}
+                          onChange={(e) => setInvoiceDate(e.target.value)}
+                          className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Rechnungsnummer</Label>
+                        <input
+                          value={invoiceNumber}
+                          onChange={(e) => setInvoiceNumber(e.target.value)}
+                          className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                      </div>
+                      <PaymentTerms value={paymentTermDays} onChange={setPaymentTermDays} />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+                      <h2 className="text-base font-semibold">Empfaenger</h2>
+                    </div>
+                    <DebtorForm debtor={debtor} onChange={setDebtor} errors={errors} />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Positionen */}
+              <Card className="border-primary/20">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">4</span>
+                    <h2 className="text-base font-semibold">Positionen</h2>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Empfaenger */}
-            <Card>
-              <CardContent className="p-5">
-                <DebtorForm debtor={debtor} onChange={setDebtor} errors={errors} />
-              </CardContent>
-            </Card>
-
-            {/* Positionen & Totals */}
-            <Card>
-              <CardContent className="p-5 space-y-5">
-                <PositionsTable
-                  positions={positions}
-                  onChange={setPositions}
-                  defaultVatRate={defaultVatRate}
-                />
-                <Separator />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <VatSummary vatGroups={totals.vatGroups} />
-                  <InvoiceTotals
-                    totalNet={totals.totalNet}
-                    totalVat={totals.totalVat}
-                    totalGross={totals.totalGross}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Bemerkungen */}
-            <Card>
-              <CardContent className="p-5">
-                <Label className="text-sm font-medium">Bemerkungen (optional)</Label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Zusaetzliche Bemerkungen auf der Rechnung..."
-                  rows={2}
-                  className="mt-1.5 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right: Summary + Actions (sticky) */}
-          <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-            <Card className="shadow-sm">
-              <CardContent className="p-5 space-y-3">
-                <h3 className="font-semibold text-base">Zusammenfassung</h3>
-                <div className="space-y-2 text-sm">
-                  <SummaryRow label="Gesellschaft" value={company?.name ?? '–'} />
-                  <SummaryRow label="Marke" value={brand?.label ?? '–'} />
-                  <SummaryRow label="UID" value={company?.uid ?? '–'} />
-                  <SummaryRow
-                    label="IBAN"
-                    value={brand ? formatIBAN(brand.iban) : '–'}
-                    mono
+                  <PositionsTable
+                    positions={positions}
+                    onChange={setPositions}
+                    defaultVatRate={defaultVatRate}
                   />
                   <Separator />
-                  <SummaryRow label="Rechnungsnr." value={invoiceNumber || '–'} mono />
-                  <SummaryRow label="Datum" value={formatDateCH(invoiceDate)} />
-                  <SummaryRow label="Faellig" value={formatDateCH(dueDate)} />
-                  <Separator />
-                  <SummaryRow label="Netto" value={`${formatCHF(totals.totalNet)} CHF`} />
-                  <SummaryRow
-                    label="MWST"
-                    value={`${formatCHF(totals.totalVat)} CHF`}
-                    muted
-                  />
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-base pt-1">
-                    <span>Total</span>
-                    <span>{formatCHF(totals.totalGross)} CHF</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <VatSummary vatGroups={totals.vatGroups} />
+                    <InvoiceTotals
+                      totalNet={totals.totalNet}
+                      totalVat={totals.totalVat}
+                      totalGross={totals.totalGross}
+                    />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <div className="space-y-2">
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={handlePreview}
-                disabled={generating || !brandId}
-              >
-                Vorschau
-              </Button>
-              <Button
-                className="w-full h-12 text-base font-semibold"
-                onClick={handleDownload}
-                disabled={generating || !brandId}
-              >
-                {generating ? 'Wird erstellt...' : 'PDF herunterladen'}
-              </Button>
+              {/* Bemerkungen */}
+              <Card>
+                <CardContent className="p-5">
+                  <Label className="text-sm font-medium text-muted-foreground">Bemerkungen (optional)</Label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Zusaetzliche Bemerkungen auf der Rechnung..."
+                    rows={2}
+                    className="mt-1.5 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                  />
+                </CardContent>
+              </Card>
             </div>
 
-            {hasErrors && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3">
-                <p className="text-sm text-destructive font-medium">
-                  Bitte alle Pflichtfelder ausfuellen.
-                </p>
+            {/* Right: Summary (sticky) */}
+            <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+              <Card className="shadow-md border-primary/10 overflow-hidden">
+                <div className="bg-primary/5 px-5 py-3 border-b border-primary/10">
+                  <h3 className="font-semibold text-base">Zusammenfassung</h3>
+                </div>
+                <CardContent className="p-5 space-y-3">
+                  <div className="space-y-2 text-sm">
+                    <SummaryRow label="Gesellschaft" value={company?.name ?? '–'} />
+                    <SummaryRow label="Marke" value={brand?.label ?? '–'} />
+                    <SummaryRow label="UID" value={company?.uid ?? '–'} />
+                    <SummaryRow
+                      label="IBAN"
+                      value={brand ? formatIBAN(brand.iban) : '–'}
+                      mono
+                    />
+                    <Separator />
+                    <SummaryRow label="Rechnungsnr." value={invoiceNumber || '–'} mono />
+                    <SummaryRow label="Datum" value={formatDateCH(invoiceDate)} />
+                    <SummaryRow label="Faellig" value={formatDateCH(dueDate)} />
+                  </div>
+                </CardContent>
+                <div className="bg-primary/5 px-5 py-4 border-t border-primary/10">
+                  <div className="space-y-1 text-sm tabular-nums">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Netto</span>
+                      <span>{formatCHF(totals.totalNet)} CHF</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">MWST</span>
+                      <span>{formatCHF(totals.totalVat)} CHF</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg pt-1">
+                      <span>Total</span>
+                      <span className="text-primary">{formatCHF(totals.totalGross)} CHF</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={handlePreview}
+                  disabled={generating}
+                >
+                  Vorschau
+                </Button>
+                <Button
+                  className="w-full h-12 text-base font-semibold shadow-lg"
+                  onClick={handleDownload}
+                  disabled={generating}
+                >
+                  {generating ? 'Wird erstellt...' : 'PDF herunterladen'}
+                </Button>
               </div>
-            )}
+
+              {hasErrors && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3">
+                  <p className="text-sm text-destructive font-medium">
+                    Bitte alle Pflichtfelder ausfuellen.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {!brandSelected && (
+          <div className="text-center py-16 text-muted-foreground">
+            <div className="text-4xl mb-3">&#9997;</div>
+            <p className="text-lg font-medium">Waehle zuerst eine Gesellschaft und Marke</p>
+            <p className="text-sm">um eine Rechnung zu erstellen</p>
+          </div>
+        )}
       </main>
       <Footer />
 
@@ -311,19 +360,15 @@ function SummaryRow({
   label,
   value,
   mono,
-  muted,
 }: {
   label: string
   value: string
   mono?: boolean
-  muted?: boolean
 }) {
   return (
     <div className="flex justify-between gap-2">
       <span className="text-muted-foreground shrink-0">{label}</span>
-      <span
-        className={`text-right truncate ${mono ? 'font-mono text-xs' : ''} ${muted ? 'text-muted-foreground' : ''}`}
-      >
+      <span className={`text-right truncate ${mono ? 'font-mono text-xs' : ''}`}>
         {value}
       </span>
     </div>

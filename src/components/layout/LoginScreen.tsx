@@ -25,12 +25,15 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-sm shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/20 px-4">
+      <Card className="w-full max-w-sm shadow-xl border-0">
         <CardContent className="p-8">
-          <div className="text-center mb-6">
+          <div className="text-center mb-8">
+            <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl mb-4 shadow-lg">
+              A
+            </div>
             <h1 className="text-xl font-semibold tracking-tight">Rechnungstool</h1>
-            <p className="text-sm text-muted-foreground mt-1">Amanthos Hotel AG</p>
+            <p className="text-sm text-muted-foreground mt-1">Amanthos Group</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
@@ -46,6 +49,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                 placeholder="Code eingeben..."
                 autoFocus
                 autoComplete="off"
+                className="h-11"
               />
               {error && (
                 <p className="text-xs text-destructive">
@@ -53,7 +57,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
                 </p>
               )}
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full h-11 font-semibold">
               Anmelden
             </Button>
           </form>
