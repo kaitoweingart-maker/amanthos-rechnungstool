@@ -49,10 +49,10 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   // ─── HEADER AREA ───
   let y = 45
 
-  // Logo top-right
+  // Logo top-right (flush right)
   if (logo) {
     try {
-      doc.image(logo, RE - 130, y, { fit: [130, 48] })
+      doc.image(logo, RE - 100, y, { fit: [100, 48] })
     } catch { /* skip */ }
   }
 
@@ -202,6 +202,9 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   doc.text('Fuer weitere Fragen stehen wir Ihnen sehr gerne zur Verfuegung.', ML, y, { width: CW })
   y += 18
   doc.text('Mit freundlichen Gruessen', ML, y)
+  y += 14
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#1a1a1a')
+  doc.text(brand.label, ML, y)
 
   // ─── FOOTER (bottom of page 1) ───
   const footY = 775
@@ -218,18 +221,18 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
   doc.text(`MWST-ID: ${company.uid}`, col3X, footY + 7, { width: CW * 0.3, align: 'right' })
   doc.fillColor('#000000')
 
-  // ─── QR BILL (on a new page) ───
-  if (!data.isPaid) {
-    try {
-      const qrData = buildQrBillData(data, company, brand, totalGross)
-      const qrBill = new SwissQRBill(qrData)
-      // Add a dedicated page for the QR bill
-      doc.addPage({ size: 'A4', margin: 0 })
-      const qrY = doc.page.height - SwissQRBill.height
-      qrBill.attachTo(doc, 0, qrY)
-    } catch (err) {
-      console.warn('QR Bill rendering failed:', err)
-    }
+  // ─── QR BILL (always, on a new page) ───
+  try {
+    const qrData = buildQrBillData(data, company, brand, totalGross)
+    const qrBill = new SwissQRBill(qrData)
+    doc.addPage({ size: 'A4', margin: 0 })
+    qrBill.attachTo(doc, 0, doc.page.height - SwissQRBill.height)
+  } catch (err) {
+    // If QR bill fails, add error text to PDF so user can see what went wrong
+    console.error('QR Bill rendering failed:', err)
+    doc.addPage({ size: 'A4', margin: 0 })
+    doc.font('Helvetica').fontSize(10).fillColor('red')
+    doc.text(`QR-Einzahlungsschein konnte nicht erstellt werden: ${err instanceof Error ? err.message : String(err)}`, 60, 60, { width: 475 })
   }
 
   doc.end()
