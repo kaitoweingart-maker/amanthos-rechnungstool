@@ -18,6 +18,11 @@ export interface DebtorAddress {
 
 export type PaymentTermDays = 7 | 14 | 30
 
+export interface PaymentInfo {
+  method: string
+  date: string
+}
+
 export interface InvoiceData {
   brandId: string
   invoiceNumber: string
@@ -26,4 +31,6 @@ export interface InvoiceData {
   debtor: DebtorAddress
   positions: InvoicePosition[]
   notes: string
+  isPaid?: boolean
+  paymentInfo?: PaymentInfo
 }

@@ -3,15 +3,14 @@ import type { DebtorAddress } from '@/types/invoice'
 import { MARGIN_LEFT, FONT_SIZE_NORMAL, LINE_HEIGHT } from './pdf-layout'
 
 /**
- * Render debtor address block
- * Returns the Y position after the debtor block
+ * Render debtor address block.
  */
 export function renderDebtor(
   doc: InstanceType<typeof PDFDocument>,
   debtor: DebtorAddress,
   y: number,
 ): number {
-  doc.font('Helvetica').fontSize(FONT_SIZE_NORMAL)
+  doc.font('Helvetica').fontSize(FONT_SIZE_NORMAL).fillColor('#1a1a1a')
 
   const lines = [
     debtor.name,
@@ -19,7 +18,7 @@ export function renderDebtor(
     `${debtor.zip} ${debtor.city}`,
   ]
 
-  if (debtor.country && debtor.country !== 'CH') {
+  if (debtor.country && debtor.country !== 'CH' && debtor.country !== 'Schweiz') {
     lines.push(debtor.country)
   }
 
@@ -28,5 +27,5 @@ export function renderDebtor(
     y += LINE_HEIGHT
   }
 
-  return y + 20
+  return y + 25
 }

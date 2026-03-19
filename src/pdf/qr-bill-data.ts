@@ -29,7 +29,6 @@ export function buildQrBillData(
       city: invoice.debtor.city,
       country: (invoice.debtor.country || 'CH') as 'CH',
     },
-    reference: 'NON',
     message: `Rechnung ${invoice.invoiceNumber}`,
   }
 }

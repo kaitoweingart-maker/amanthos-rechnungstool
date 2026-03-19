@@ -8,8 +8,7 @@ import {
 } from './pdf-layout'
 
 /**
- * Render totals (net, VAT, gross)
- * Returns the Y position after the totals
+ * Render totals (net, VAT, gross) right-aligned.
  */
 export function renderTotals(
   doc: InstanceType<typeof PDFDocument>,
@@ -17,34 +16,55 @@ export function renderTotals(
   totalVat: number,
   totalGross: number,
   y: number,
+  isPaid?: boolean,
 ): number {
-  const labelX = 360
-  const valueX = A4_WIDTH - MARGIN_RIGHT - 60
+  const rightEdge = A4_WIDTH - MARGIN_RIGHT
+  const labelX = rightEdge - 170
+  const valueX = rightEdge - 55
+  const valueWidth = 55
 
   // Net
-  doc.font('Helvetica').fontSize(FONT_SIZE_NORMAL)
-  doc.text('Netto CHF', labelX, y)
-  doc.text(formatCHF(totalNet), valueX, y, { width: 60, align: 'right' })
+  doc.font('Helvetica').fontSize(FONT_SIZE_NORMAL).fillColor('#555555')
+  doc.text('Netto CHF', labelX, y, { width: 100 })
+  doc.text(formatCHF(totalNet), valueX, y, { width: valueWidth, align: 'right' })
   y += LINE_HEIGHT
 
   // VAT
-  doc.text('MWST CHF', labelX, y)
-  doc.text(formatCHF(totalVat), valueX, y, { width: 60, align: 'right' })
-  y += LINE_HEIGHT
+  doc.text('MWST CHF', labelX, y, { width: 100 })
+  doc.text(formatCHF(totalVat), valueX, y, { width: valueWidth, align: 'right' })
+  y += LINE_HEIGHT + 2
 
-  // Separator
+  // Separator line
   doc
-    .strokeColor('#000000')
-    .lineWidth(1)
+    .strokeColor('#1a1a1a')
+    .lineWidth(0.8)
     .moveTo(labelX, y)
-    .lineTo(A4_WIDTH - MARGIN_RIGHT, y)
+    .lineTo(rightEdge, y)
     .stroke()
   y += 6
 
   // Total
-  doc.font('Helvetica-Bold').fontSize(12)
-  doc.text('Total CHF', labelX, y)
-  doc.text(formatCHF(totalGross), valueX, y, { width: 60, align: 'right' })
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(11)
+    .fillColor('#1a1a1a')
+  doc.text('Total CHF', labelX, y, { width: 100 })
+  doc.text(formatCHF(totalGross), valueX, y, { width: valueWidth, align: 'right' })
 
-  return y + 30
+  y += 20
+
+  // Payment status
+  if (isPaid) {
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(FONT_SIZE_NORMAL)
+      .fillColor('#16a34a')
+      .text('BEZAHLT', labelX, y, { width: rightEdge - labelX, align: 'right' })
+      .fillColor('#000000')
+    y += LINE_HEIGHT
+  }
+
+  doc.fillColor('#000000')
+
+  return y + 10
 }

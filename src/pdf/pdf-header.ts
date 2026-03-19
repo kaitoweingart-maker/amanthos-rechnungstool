@@ -11,12 +11,11 @@ import {
   LINE_HEIGHT_SMALL,
 } from './pdf-layout'
 
-const LOGO_MAX_WIDTH = 140
-const LOGO_MAX_HEIGHT = 50
+const LOGO_MAX_WIDTH = 130
+const LOGO_MAX_HEIGHT = 45
 
 /**
- * Render company letterhead (top of page) with optional logo
- * Returns the Y position after the header
+ * Render company letterhead with logo top-right, company info top-left.
  */
 export function renderHeader(
   doc: InstanceType<typeof PDFDocument>,
@@ -27,7 +26,7 @@ export function renderHeader(
   let y = MARGIN_TOP
   const rightEdge = A4_WIDTH - MARGIN_RIGHT
 
-  // Render logo on the right if available
+  // Logo on the right
   if (logoBuffer) {
     try {
       doc.image(logoBuffer, rightEdge - LOGO_MAX_WIDTH, y, {
@@ -39,63 +38,59 @@ export function renderHeader(
     }
   }
 
-  // Company name (bold, left)
+  // Company name
   doc
     .font('Helvetica-Bold')
-    .fontSize(12)
+    .fontSize(11)
+    .fillColor('#1a1a1a')
     .text(company.name, MARGIN_LEFT, y)
 
-  y += 16
+  y += 14
 
-  // Brand name below company name (if different)
+  // Brand name (if different from company)
   if (brand.label !== company.name) {
     doc
       .font('Helvetica')
-      .fontSize(9)
-      .fillColor('#444444')
+      .fontSize(FONT_SIZE_SMALL)
+      .fillColor('#555555')
       .text(brand.label, MARGIN_LEFT, y)
-      .fillColor('#000000')
-    y += 14
+    y += 11
   }
 
-  // Company address and details
+  // Address + UID + IBAN
   doc
     .font('Helvetica')
     .fontSize(FONT_SIZE_SMALL)
-    .fillColor('#666666')
+    .fillColor('#777777')
 
-  const lines = [
-    `${company.address.street}, ${company.address.zip} ${company.address.city}`,
-    `UID: ${company.uid}`,
-    `IBAN: ${formatIBAN(brand.iban)} · BIC: ${company.bic}`,
-  ]
-
-  for (const line of lines) {
-    doc.text(line, MARGIN_LEFT, y)
-    y += LINE_HEIGHT_SMALL
-  }
+  doc.text(`${company.address.street}, ${company.address.zip} ${company.address.city}`, MARGIN_LEFT, y)
+  y += LINE_HEIGHT_SMALL
+  doc.text(`UID: ${company.uid}`, MARGIN_LEFT, y)
+  y += LINE_HEIGHT_SMALL
+  doc.text(`IBAN: ${formatIBAN(brand.iban)}`, MARGIN_LEFT, y)
+  y += LINE_HEIGHT_SMALL
 
   doc.fillColor('#000000')
 
-  // Make sure y is below the logo area
-  const logoBottomY = MARGIN_TOP + LOGO_MAX_HEIGHT + 8
-  if (y < logoBottomY) y = logoBottomY
+  // Ensure we're below logo
+  const logoBottom = MARGIN_TOP + LOGO_MAX_HEIGHT + 5
+  if (y < logoBottom) y = logoBottom
 
-  // Horizontal line
-  y += 4
+  // Thin separator
+  y += 6
   doc
-    .strokeColor('#cccccc')
-    .lineWidth(0.5)
+    .strokeColor('#d0d0d0')
+    .lineWidth(0.4)
     .moveTo(MARGIN_LEFT, y)
     .lineTo(rightEdge, y)
     .stroke()
     .strokeColor('#000000')
 
-  return y + 15
+  return y + 18
 }
 
 /**
- * Render sender line above debtor address (small, single line)
+ * Render small sender line above debtor address block.
  */
 export function renderSenderLine(
   doc: InstanceType<typeof PDFDocument>,
@@ -105,7 +100,7 @@ export function renderSenderLine(
   doc
     .font('Helvetica')
     .fontSize(FONT_SIZE_LABEL)
-    .fillColor('#999999')
+    .fillColor('#aaaaaa')
     .text(
       `${company.name} · ${company.address.street} · ${company.address.zip} ${company.address.city}`,
       MARGIN_LEFT,
@@ -113,5 +108,5 @@ export function renderSenderLine(
     )
     .fillColor('#000000')
 
-  return y + 14
+  return y + 12
 }

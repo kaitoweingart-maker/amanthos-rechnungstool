@@ -41,7 +41,7 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
 
   const doc = new PDFDocument({
     size: 'A4',
-    margins: { top: 50, bottom: 50, left: 60, right: 60 },
+    margins: { top: 45, bottom: 50, left: 56, right: 56 },
     autoFirstPage: true,
     bufferPages: true,
     info: {
@@ -52,35 +52,36 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<string> {
 
   const stream = doc.pipe(blobStream())
 
-  // Render sections sequentially, tracking Y position
+  // Render sections
   let y = renderHeader(doc, company, brand, logoBuffer)
   y = renderSenderLine(doc, company, y)
   y = renderDebtor(doc, data.debtor, y)
-  y = renderMeta(doc, data.invoiceNumber, data.invoiceDate, data.paymentTermDays, y)
+  y = renderMeta(doc, data.invoiceNumber, data.invoiceDate, data.paymentTermDays, y, data.isPaid, data.paymentInfo)
   y = renderPositionsTable(doc, data.positions, y)
   y = renderVatSummary(doc, vatGroups, y)
-  y = renderTotals(doc, totalNet, totalVat, totalGross, y)
+  y = renderTotals(doc, totalNet, totalVat, totalGross, y, data.isPaid)
 
   // Notes
   if (data.notes) {
-    y += 10
+    y += 6
     doc
       .font('Helvetica')
       .fontSize(FONT_SIZE_NORMAL)
-      .fillColor('#666666')
+      .fillColor('#777777')
       .text(`Bemerkung: ${data.notes}`, MARGIN_LEFT, y)
       .fillColor('#000000')
   }
 
-  // Render QR bill
-  try {
-    const { SwissQRBill } = await import('swissqrbill/pdf')
-    const qrData = buildQrBillData(data, company, brand, totalGross)
-    const qrBill = new SwissQRBill(qrData)
-    qrBill.attachTo(doc)
-  } catch (err) {
-    console.warn('QR Bill rendering skipped:', err)
-    // Continue without QR bill
+  // Render QR bill (only if NOT paid - paid invoices don't need payment slip)
+  if (!data.isPaid) {
+    try {
+      const { SwissQRBill } = await import('swissqrbill/pdf')
+      const qrData = buildQrBillData(data, company, brand, totalGross)
+      const qrBill = new SwissQRBill(qrData)
+      qrBill.attachTo(doc)
+    } catch (err) {
+      console.warn('QR Bill rendering skipped:', err)
+    }
   }
 
   doc.end()

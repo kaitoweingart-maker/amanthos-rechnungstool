@@ -9,16 +9,17 @@ import {
   FONT_SIZE_NORMAL,
   FONT_SIZE_SMALL,
   LINE_HEIGHT,
-  TABLE_COL_POS,
-  TABLE_COL_QTY,
-  TABLE_COL_PRICE,
-  TABLE_COL_VAT,
-  TABLE_COL_AMOUNT,
 } from './pdf-layout'
 
+// Column positions
+const COL_DESC = MARGIN_LEFT
+const COL_QTY = 310
+const COL_PRICE = 370
+const COL_VAT = 430
+const COL_AMOUNT = A4_WIDTH - MARGIN_RIGHT
+
 /**
- * Render the positions table
- * Returns the Y position after the table
+ * Render the positions table.
  */
 export function renderPositionsTable(
   doc: InstanceType<typeof PDFDocument>,
@@ -27,69 +28,65 @@ export function renderPositionsTable(
 ): number {
   const rightEdge = A4_WIDTH - MARGIN_RIGHT
 
-  // Table header
+  // Table header background
+  doc
+    .rect(MARGIN_LEFT - 4, y - 3, rightEdge - MARGIN_LEFT + 8, LINE_HEIGHT + 4)
+    .fill('#f5f5f5')
+
+  // Table header text
   doc
     .font('Helvetica-Bold')
     .fontSize(FONT_SIZE_SMALL)
-    .fillColor('#666666')
+    .fillColor('#555555')
 
-  doc.text('Beschreibung', TABLE_COL_POS, y)
-  doc.text('Menge', TABLE_COL_QTY, y, { width: 50, align: 'right' })
-  doc.text('Einzelpreis', TABLE_COL_PRICE, y, { width: 60, align: 'right' })
-  doc.text('MWST', TABLE_COL_VAT, y, { width: 40, align: 'right' })
-  doc.text('Betrag', TABLE_COL_AMOUNT - 60, y, { width: 60, align: 'right' })
+  doc.text('Beschreibung', COL_DESC, y)
+  doc.text('Menge', COL_QTY, y, { width: 50, align: 'right' })
+  doc.text('Preis', COL_PRICE, y, { width: 50, align: 'right' })
+  doc.text('MWST', COL_VAT, y, { width: 35, align: 'right' })
+  doc.text('Betrag', COL_AMOUNT - 55, y, { width: 55, align: 'right' })
 
-  y += LINE_HEIGHT
-
-  // Header line
-  doc
-    .strokeColor('#cccccc')
-    .lineWidth(0.5)
-    .moveTo(MARGIN_LEFT, y)
-    .lineTo(rightEdge, y)
-    .stroke()
-
-  y += 6
+  y += LINE_HEIGHT + 4
 
   // Rows
   doc
     .font('Helvetica')
     .fontSize(FONT_SIZE_NORMAL)
-    .fillColor('#000000')
+    .fillColor('#1a1a1a')
 
   for (const pos of positions) {
     const net = positionNetAmount(pos)
 
-    doc.text(pos.description, TABLE_COL_POS, y, {
-      width: TABLE_COL_QTY - TABLE_COL_POS - 10,
+    doc.text(pos.description, COL_DESC, y, {
+      width: COL_QTY - COL_DESC - 10,
     })
-    doc.text(String(pos.quantity), TABLE_COL_QTY, y, {
+    doc.text(String(pos.quantity), COL_QTY, y, {
       width: 50,
       align: 'right',
     })
-    doc.text(formatCHF(pos.unitPrice), TABLE_COL_PRICE, y, {
-      width: 60,
+    doc.text(formatCHF(pos.unitPrice), COL_PRICE, y, {
+      width: 50,
       align: 'right',
     })
-    doc.text(`${pos.vatRate}%`, TABLE_COL_VAT, y, {
-      width: 40,
+    doc.text(`${pos.vatRate}%`, COL_VAT, y, {
+      width: 35,
       align: 'right',
     })
-    doc.text(formatCHF(net), TABLE_COL_AMOUNT - 60, y, {
-      width: 60,
+    doc.text(formatCHF(net), COL_AMOUNT - 55, y, {
+      width: 55,
       align: 'right',
     })
 
-    y += LINE_HEIGHT + 4
+    y += LINE_HEIGHT + 3
   }
 
   // Bottom line
   doc
-    .strokeColor('#cccccc')
-    .lineWidth(0.5)
+    .strokeColor('#d0d0d0')
+    .lineWidth(0.4)
     .moveTo(MARGIN_LEFT, y)
     .lineTo(rightEdge, y)
     .stroke()
+    .strokeColor('#000000')
 
-  return y + 10
+  return y + 8
 }

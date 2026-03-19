@@ -66,6 +66,9 @@ function InvoiceTool() {
   })
   const [positions, setPositions] = useState<InvoicePosition[]>([])
   const [notes, setNotes] = useState('')
+  const [isPaid, setIsPaid] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [paymentDate, setPaymentDate] = useState(todayISO())
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [generating, setGenerating] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -134,6 +137,8 @@ function InvoiceTool() {
       debtor,
       positions,
       notes,
+      isPaid,
+      paymentInfo: isPaid ? { method: paymentMethod, date: paymentDate } : undefined,
     }
   }
 
@@ -302,19 +307,70 @@ function InvoiceTool() {
                 </CardContent>
               </Card>
 
-              {/* Bemerkungen */}
-              <Card>
-                <CardContent className="p-5">
-                  <Label className="text-sm font-medium text-muted-foreground">Bemerkungen (optional)</Label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Zusaetzliche Bemerkungen auf der Rechnung..."
-                    rows={2}
-                    className="mt-1.5 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                  />
-                </CardContent>
-              </Card>
+              {/* Zahlung & Bemerkungen */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isPaid}
+                          onChange={(e) => setIsPaid(e.target.checked)}
+                          className="h-4 w-4 rounded border-input accent-primary"
+                        />
+                        <span className="text-sm font-medium">Bereits bezahlt</span>
+                      </label>
+                    </div>
+                    {isPaid && (
+                      <div className="space-y-2.5">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Zahlungsart</Label>
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <option value="">Bitte waehlen...</option>
+                            <option value="Kreditkarte">Kreditkarte</option>
+                            <option value="Bankueberweisung">Bankueberweisung</option>
+                            <option value="TWINT">TWINT</option>
+                            <option value="Bargeld">Bargeld</option>
+                            <option value="Debitkarte">Debitkarte</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Bezahlt am</Label>
+                          <input
+                            type="date"
+                            value={paymentDate}
+                            onChange={(e) => setPaymentDate(e.target.value)}
+                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!isPaid && (
+                      <p className="text-xs text-muted-foreground">
+                        Aktivieren, wenn der Gast bereits bezahlt hat. Die Rechnung wird ohne QR-Einzahlungsschein erstellt.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-5">
+                    <Label className="text-sm font-medium text-muted-foreground">Bemerkungen (optional)</Label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Zusaetzliche Bemerkungen auf der Rechnung..."
+                      rows={3}
+                      className="mt-1.5 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             {/* Right: Summary (sticky) */}

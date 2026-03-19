@@ -9,8 +9,7 @@ import {
 } from './pdf-layout'
 
 /**
- * Render invoice title and meta info (number, date, due date)
- * Returns the Y position after the meta block
+ * Render invoice title and meta info.
  */
 export function renderMeta(
   doc: InstanceType<typeof PDFDocument>,
@@ -18,39 +17,51 @@ export function renderMeta(
   invoiceDate: string,
   paymentTermDays: PaymentTermDays,
   y: number,
+  isPaid?: boolean,
+  paymentInfo?: { method: string; date: string },
 ): number {
   // Title
   doc
     .font('Helvetica-Bold')
     .fontSize(FONT_SIZE_TITLE)
+    .fillColor('#1a1a1a')
     .text('Rechnung', MARGIN_LEFT, y)
 
-  y += 24
+  y += 22
 
   const dueDate = calculateDueDate(invoiceDate, paymentTermDays)
-
-  // Meta info in two columns
   const labelX = MARGIN_LEFT
-  const valueX = MARGIN_LEFT + 110
+  const valueX = MARGIN_LEFT + 120
 
   doc.font('Helvetica').fontSize(FONT_SIZE_NORMAL)
 
-  const meta = [
+  const meta: [string, string][] = [
     ['Rechnungsnummer:', invoiceNumber],
     ['Rechnungsdatum:', formatDateCH(invoiceDate)],
     ['Zahlbar bis:', formatDateCH(dueDate)],
     ['Zahlungsfrist:', `${paymentTermDays} Tage netto`],
   ]
 
+  if (isPaid && paymentInfo) {
+    meta.push(
+      ['Zahlungsstatus:', 'Bezahlt'],
+      ['Zahlungsart:', paymentInfo.method],
+      ['Bezahlt am:', formatDateCH(paymentInfo.date)],
+    )
+  }
+
   for (const [label, value] of meta) {
     doc
       .font('Helvetica')
-      .fillColor('#666666')
+      .fillColor('#777777')
       .text(label, labelX, y)
-      .fillColor('#000000')
+    doc
+      .fillColor('#1a1a1a')
       .text(value, valueX, y)
     y += LINE_HEIGHT
   }
 
-  return y + 20
+  doc.fillColor('#000000')
+
+  return y + 16
 }

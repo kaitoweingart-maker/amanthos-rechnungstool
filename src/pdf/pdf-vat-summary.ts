@@ -10,8 +10,7 @@ import {
 } from './pdf-layout'
 
 /**
- * Render VAT summary breakdown
- * Returns the Y position after the summary
+ * Render VAT summary breakdown (right-aligned).
  */
 export function renderVatSummary(
   doc: InstanceType<typeof PDFDocument>,
@@ -20,35 +19,42 @@ export function renderVatSummary(
 ): number {
   if (vatGroups.length === 0) return y
 
-  const colLabel = 320
-  const colNet = 390
-  const colVat = 460
-  const colGross = A4_WIDTH - MARGIN_RIGHT - 60
+  const rightEdge = A4_WIDTH - MARGIN_RIGHT
+  // 4 columns right-aligned: Satz | Netto | MWST | Brutto
+  const colSatz = rightEdge - 230
+  const colNet = rightEdge - 170
+  const colVat = rightEdge - 100
+  const colGross = rightEdge - 55
+  const colWidth = 55
 
+  // Header
   doc
     .font('Helvetica-Bold')
     .fontSize(FONT_SIZE_SMALL)
-    .fillColor('#666666')
+    .fillColor('#777777')
 
-  doc.text('MWST-Satz', colLabel, y)
-  doc.text('Netto', colNet, y, { width: 60, align: 'right' })
-  doc.text('MWST', colVat, y, { width: 60, align: 'right' })
-  doc.text('Brutto', colGross, y, { width: 60, align: 'right' })
+  doc.text('MWST', colSatz, y, { width: 50 })
+  doc.text('Netto', colNet, y, { width: colWidth, align: 'right' })
+  doc.text('MWST', colVat, y, { width: colWidth, align: 'right' })
+  doc.text('Brutto', colGross, y, { width: colWidth, align: 'right' })
 
   y += LINE_HEIGHT
 
+  // Rows
   doc
     .font('Helvetica')
     .fontSize(FONT_SIZE_NORMAL)
-    .fillColor('#000000')
+    .fillColor('#1a1a1a')
 
   for (const group of vatGroups) {
-    doc.text(`${group.rate}%`, colLabel, y)
-    doc.text(formatCHF(group.netAmount), colNet, y, { width: 60, align: 'right' })
-    doc.text(formatCHF(group.vatAmount), colVat, y, { width: 60, align: 'right' })
-    doc.text(formatCHF(group.grossAmount), colGross, y, { width: 60, align: 'right' })
+    doc.text(`${group.rate}%`, colSatz, y, { width: 50 })
+    doc.text(formatCHF(group.netAmount), colNet, y, { width: colWidth, align: 'right' })
+    doc.text(formatCHF(group.vatAmount), colVat, y, { width: colWidth, align: 'right' })
+    doc.text(formatCHF(group.grossAmount), colGross, y, { width: colWidth, align: 'right' })
     y += LINE_HEIGHT
   }
 
-  return y + 10
+  doc.fillColor('#000000')
+
+  return y + 8
 }
