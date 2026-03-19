@@ -9,14 +9,16 @@ export default defineConfig({
     react(),
     tailwindcss(),
     nodePolyfills({
-      include: ['buffer', 'stream', 'util', 'events', 'zlib'],
-      globals: { Buffer: true },
+      include: ['buffer', 'stream', 'util', 'events', 'zlib', 'process', 'string_decoder', 'path'],
+      globals: { Buffer: true, process: true },
     }),
   ],
   base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Use standalone build with inlined font data (browser-compatible)
+      pdfkit: path.resolve(__dirname, './node_modules/pdfkit/js/pdfkit.standalone.js'),
     },
   },
 })

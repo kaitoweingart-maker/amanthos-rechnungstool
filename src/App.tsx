@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { LoginScreen } from '@/components/layout/LoginScreen'
@@ -45,7 +45,15 @@ export default function App() {
 }
 
 function InvoiceTool() {
-  const [brandId, setBrandId] = useState('')
+  // Check for ?brand= URL parameter (direct brand links)
+  const urlBrandId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    const b = params.get('brand')
+    return b && getBrandById(b) ? b : ''
+  }, [])
+  const isDirectLink = !!urlBrandId
+
+  const [brandId, setBrandId] = useState(urlBrandId)
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [invoiceDate, setInvoiceDate] = useState(todayISO())
   const [paymentTermDays, setPaymentTermDays] = useState<PaymentTermDays>(DEFAULT_PAYMENT_TERM)
@@ -63,9 +71,26 @@ function InvoiceTool() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const prevUrlRef = useRef<string | null>(null)
+  const initialized = useRef(false)
 
   const getNext = useCounterStore((s) => s.getNext)
   const peek = useCounterStore((s) => s.peek)
+
+  // Initialize positions and invoice number for direct brand links
+  useEffect(() => {
+    if (urlBrandId && !initialized.current) {
+      initialized.current = true
+      const b = getBrandById(urlBrandId)
+      if (b) {
+        const c = getCompanyForBrand(urlBrandId)
+        const vatRate = c ? getDefaultVatRate(c.id) : 3.8 as const
+        setPositions([createEmptyPosition(vatRate)])
+        const year = new Date(invoiceDate).getFullYear()
+        const nextSeq = peek(b.shortCode, year)
+        setInvoiceNumber(generateInvoiceNumber(b.shortCode, year, nextSeq))
+      }
+    }
+  }, [urlBrandId, invoiceDate, peek])
   const brand = getBrandById(brandId)
   const company = getCompanyForBrand(brandId)
 
@@ -139,7 +164,8 @@ function InvoiceTool() {
       setPreviewOpen(true)
     } catch (err) {
       console.error('PDF generation failed:', err)
-      alert('PDF-Erstellung fehlgeschlagen. Siehe Konsole fuer Details.')
+      const msg = err instanceof Error ? err.message : String(err)
+      alert(`PDF-Erstellung fehlgeschlagen: ${msg}`)
     } finally {
       setGenerating(false)
     }
@@ -158,7 +184,8 @@ function InvoiceTool() {
       setTimeout(() => URL.revokeObjectURL(url), 5000)
     } catch (err) {
       console.error('PDF generation failed:', err)
-      alert('PDF-Erstellung fehlgeschlagen. Siehe Konsole fuer Details.')
+      const msg = err instanceof Error ? err.message : String(err)
+      alert(`PDF-Erstellung fehlgeschlagen: ${msg}`)
     } finally {
       setGenerating(false)
     }
@@ -171,16 +198,35 @@ function InvoiceTool() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-6 sm:px-6">
-        {/* Step 1: Select company */}
-        <Card className="mb-4 border-primary/20">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
-              <h2 className="text-base font-semibold">Absender waehlen</h2>
-            </div>
-            <CompanySelector brandId={brandId} onBrandChange={handleBrandChange} />
-          </CardContent>
-        </Card>
+        {/* Step 1: Select company (hidden for direct brand links) */}
+        {isDirectLink ? (
+          <Card className="mb-4 border-primary/20">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                    {brand?.label?.charAt(0) ?? 'A'}
+                  </span>
+                  <div>
+                    <p className="font-semibold">{brand?.label}</p>
+                    <p className="text-xs text-muted-foreground">{company?.name}</p>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground font-mono">{company?.uid}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="mb-4 border-primary/20">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                <h2 className="text-base font-semibold">Absender waehlen</h2>
+              </div>
+              <CompanySelector brandId={brandId} onBrandChange={handleBrandChange} />
+            </CardContent>
+          </Card>
+        )}
 
         {brandSelected && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -191,7 +237,7 @@ function InvoiceTool() {
                 <Card>
                   <CardContent className="p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">{isDirectLink ? 1 : 2}</span>
                       <h2 className="text-base font-semibold">Rechnungsdaten</h2>
                     </div>
                     <div className="space-y-3">
@@ -220,7 +266,7 @@ function InvoiceTool() {
                 <Card>
                   <CardContent className="p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">{isDirectLink ? 2 : 3}</span>
                       <h2 className="text-base font-semibold">Empfaenger</h2>
                     </div>
                     <DebtorForm debtor={debtor} onChange={setDebtor} errors={errors} />
@@ -232,7 +278,7 @@ function InvoiceTool() {
               <Card className="border-primary/20">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">4</span>
+                    <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">{isDirectLink ? 3 : 4}</span>
                     <h2 className="text-base font-semibold">Positionen</h2>
                   </div>
                   <PositionsTable
