@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { PositionRow } from './PositionRow'
+import { PositionPresets } from './PositionPresets'
 import type { InvoicePosition, VatRate } from '@/types/invoice'
 
 interface PositionsTableProps {
@@ -23,6 +24,10 @@ export function PositionsTable({ positions, onChange, defaultVatRate }: Position
     onChange([...positions, createEmptyPosition(defaultVatRate)])
   }
 
+  function addPresetPosition(position: InvoicePosition) {
+    onChange([...positions, position])
+  }
+
   function updatePosition(index: number, position: InvoicePosition) {
     const next = [...positions]
     next[index] = position
@@ -36,6 +41,7 @@ export function PositionsTable({ positions, onChange, defaultVatRate }: Position
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium">Positionen</h3>
+      <PositionPresets onAdd={addPresetPosition} />
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
