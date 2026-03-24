@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { PositionRow } from './PositionRow'
 import { PositionPresets } from './PositionPresets'
+import { MwstCalculator } from './MwstCalculator'
 import type { InvoicePosition, VatRate } from '@/types/invoice'
 
 interface PositionsTableProps {
@@ -70,6 +71,7 @@ export function PositionsTable({ positions, onChange, defaultVatRate }: Position
       <Button type="button" variant="outline" size="sm" onClick={addPosition}>
         + Position hinzufuegen
       </Button>
+      <MwstCalculator />
     </div>
   )
 }
